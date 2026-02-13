@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-900 text-gray-100 font-light; /* Set default font to light */
+  font-family: 'Barlow', sans-serif; /* Apply Barlow font */
+  background-image:
+    radial-gradient(at 27% 37%, hsla(200, 80%, 30%, 0.1) 0px, transparent 50%), /* Cooler blue */
+    radial-gradient(at 97% 21%, hsla(180, 70%, 40%, 0.1) 0px, transparent 50%), /* Cyan */
+    radial-gradient(at 52% 99%, hsla(240, 70%, 35%, 0.1) 0px, transparent 50%), /* Deep blue-purple */
+    radial-gradient(at 10% 29%, hsla(210, 80%, 30%, 0.1) 0px, transparent 50%), /* Another cool blue */
+    radial-gradient(at 97% 96%, hsla(160, 60%, 40%, 0.1) 0px, transparent 50%), /* Greenish cyan */
+    radial-gradient(at 33% 50%, hsla(220, 70%, 35%, 0.1) 0px, transparent 50%),
+    radial-gradient(at 79% 53%, hsla(190, 60%, 45%, 0.1) 0px, transparent 50%); /* Lighter cyan */
+}
+
+/* Custom CSS for cyberpunk elements */
+.clip-corner-br {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+
+.feature-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -15px; /* Adjust for desired overlap */
+  width: 25px; /* Width of the semi-transparent element */
+  height: 100%;
+  background-color: rgba(34, 211, 238, 0.08); /* Semi-transparent cyan */
+  transform: skewX(-15deg); /* Angle of the skew */
+  transform-origin: top right;
+  z-index: 0;
+}
+
+.feature-card > * {
+  position: relative; /* Ensure content is above pseudo-element */
+  z-index: 1;
+}
+
+.button-clip {
+  position: relative;
+  overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+}
