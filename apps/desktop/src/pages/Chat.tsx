@@ -5,91 +5,205 @@ import { useAppStore } from '../stores/app';
 import { api } from '../lib/api';
 import MessageItem from '../components/MessageItem';
 import ContextMenu from '../components/ContextMenu';
+import ConfirmDialog from '../components/ConfirmDialog';
 import type { MessageWithAuthor } from '../lib/api';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
 
+console.log('WS_URL:', WS_URL);
+
 export default function ChatPage() {
   const { channelId } = useParams<{ channelId: string }>();
-  const { token } = useAuthStore();
+  const { token, userId } = useAuthStore();
   const { setCurrentChannel, currentChannel } = useAppStore();
+
+  console.log('ChatPage render - channelId:', channelId, 'token:', token ? 'present' : 'null');
+
   const [messages, setMessages] = useState<MessageWithAuthor[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [showOffTopic, setShowOffTopic] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<MessageWithAuthor | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<MessageWithAuthor | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const isMountedRef = useRef<boolean>(true);
+  const maxReconnectDelay = 30000; // 30 seconds max delay
+  const baseReconnectDelay = 1000; // 1 second base delay
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  // Cleanup on unmount
   useEffect(() => {
-    if (channelId && token) {
-      setIsLoading(true);
-      Promise.all([
-        api.channels.get(token, channelId).then(setCurrentChannel).catch(console.error),
-        api.channels.messages(token, channelId).then((msgs) => {
-          setMessages(msgs.reverse());
-        }).catch(console.error),
-      ]).finally(() => setIsLoading(false));
+    return () => {
+      isMountedRef.current = false;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
+
+  // Load channel info and messages on channel change
+  useEffect(() => {
+    if (!channelId || !token) {
+      setMessages([]);
+      setIsLoading(false);
+      return;
     }
+
+    setIsLoading(true);
+    let isMounted = true;
+    const loadChannel = async () => {
+      try {
+        const [channel, msgs] = await Promise.all([
+          api.channels.get(token, channelId),
+          api.channels.messages(token, channelId),
+        ]);
+        if (isMounted) {
+          setCurrentChannel(channel);
+          setMessages(msgs.reverse());
+        }
+      } catch (err) {
+        console.error('Failed to load channel:', err);
+        if (isMounted) {
+          setMessages([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadChannel();
+
+    return () => {
+      isMounted = false;
+    };
   }, [channelId, token]);
 
+  // Connection logic
   useEffect(() => {
-    if (!token || !channelId) return;
+    if (!token || !channelId) {
+      setIsConnected(false);
+      return;
+    }
 
+    // Clean up previous connection
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+    reconnectAttemptsRef.current = 0;
+
+    let isChannelActive = true;
     const connect = () => {
-      const socket = new WebSocket(`${WS_URL}/ws?token=${token}`);
-      wsRef.current = socket;
+      // Check if we should still attempt to connect
+      if (!isMountedRef.current || !isChannelActive) {
+        return;
+      }
 
-      socket.onopen = () => {
-        setIsConnected(true);
-        socket.send(JSON.stringify({
-          type: 'subscribe',
-          channelId: channelId,
-        }));
-      };
+      const wsUrl = `${WS_URL}/ws?token=${token}`;
+      console.log('Connecting to WebSocket:', wsUrl);
 
-      socket.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          if (msg.type === 'message' && msg.channel_id === channelId) {
-            const newMsg: MessageWithAuthor = {
-              id: msg.message_id,
-              channel_id: msg.channel_id,
-              author_id: msg.author_id,
-              content: msg.content,
-              is_pertinent: msg.is_pertinent,
-              parent_id: null,
-              created_at: msg.created_at,
-              author_name: msg.author_name || 'Unknown',
-              author_avatar: null,
-            };
-            setMessages((prev) => [...prev, newMsg]);
+      try {
+        const socket = new WebSocket(wsUrl);
+        wsRef.current = socket;
+
+        socket.onopen = () => {
+          console.log('WebSocket connected');
+          if (!isMountedRef.current || !isChannelActive) {
+            socket.close();
+            return;
           }
-        } catch (e) {
-          console.error('Failed to parse message:', e);
+          setIsConnected(true);
+          reconnectAttemptsRef.current = 0; // Reset reconnect counter on successful connection
+          socket.send(JSON.stringify({
+            type: 'subscribe',
+            channelId: channelId,
+          }));
+        };
+
+        socket.onmessage = (event) => {
+          if (!isMountedRef.current || !isChannelActive) {
+            return;
+          }
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'message' && msg.channel_id === channelId) {
+              setMessages((prev) => {
+                if (prev.some((m) => m.id === msg.message_id)) {
+                  return prev;
+                }
+                const newMsg: MessageWithAuthor = {
+                  id: msg.message_id,
+                  channel_id: msg.channel_id,
+                  author_id: msg.author_id,
+                  content: msg.content,
+                  is_pertinent: msg.is_pertinent,
+                  parent_id: null,
+                  created_at: msg.created_at,
+                  author_name: msg.author_name || 'Unknown',
+                  author_avatar: null,
+                };
+                return [...prev, newMsg];
+              });
+            }
+          } catch (e) {
+            console.error('Failed to parse message:', e);
+          }
+        };
+
+        socket.onclose = () => {
+          if (!isMountedRef.current || !isChannelActive) {
+            return;
+          }
+          setIsConnected(false);
+          // Exponential backoff with jitter
+          reconnectAttemptsRef.current += 1;
+          const delay = Math.min(
+            maxReconnectDelay,
+            baseReconnectDelay * Math.pow(2, reconnectAttemptsRef.current) + Math.random() * 1000
+          );
+          reconnectTimeoutRef.current = setTimeout(connect, delay);
+        };
+
+        socket.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          // onclose will handle reconnection
+          if (isMountedRef.current && isChannelActive && wsRef.current === socket) {
+            wsRef.current.close();
+          }
+        };
+      } catch (err) {
+        console.error('Failed to create WebSocket:', err);
+        if (isMountedRef.current && isChannelActive) {
+          setIsConnected(false);
+          // Still attempt to reconnect even if creation fails
+          reconnectAttemptsRef.current += 1;
+          const delay = Math.min(
+            maxReconnectDelay,
+            baseReconnectDelay * Math.pow(2, reconnectAttemptsRef.current) + Math.random() * 1000
+          );
+          reconnectTimeoutRef.current = setTimeout(connect, delay);
         }
-      };
-
-      socket.onclose = () => {
-        setIsConnected(false);
-        reconnectTimeoutRef.current = setTimeout(connect, 3000);
-      };
-
-      socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
+      }
     };
 
     connect();
 
     return () => {
+      isChannelActive = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -98,6 +212,8 @@ export default function ChatPage() {
       }
     };
   }, [token, channelId]);
+
+  // Rest of the component remains the same...
 
   useEffect(() => {
     scrollToBottom();
@@ -131,8 +247,9 @@ export default function ChatPage() {
     }
   };
 
-  const pertinentMessages = messages.filter((m) => m.is_pertinent);
-  const offTopicMessages = messages.filter((m) => !m.is_pertinent);
+  const sortedMessages = [...messages].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
 
   const handleContextMenu = (e: React.MouseEvent, message?: MessageWithAuthor) => {
     e.preventDefault();
@@ -155,6 +272,20 @@ export default function ChatPage() {
     setContextMenu(null);
   };
 
+  const handleDeleteMessage = (message: MessageWithAuthor) => {
+    setDeleteConfirm(message);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm || !token || !channelId) return;
+    try {
+      await api.channels.deleteMessage(token, channelId, deleteConfirm.id);
+      setMessages((prev) => prev.filter((m) => m.id !== deleteConfirm.id));
+    } catch (err) {
+      console.error('Failed to delete message:', err);
+    }
+  };
+
   const contextMenuItems = contextMenu && selectedMessage ? [
     { label: 'Copy message', onClick: () => handleCopyMessage(selectedMessage) },
     { 
@@ -162,14 +293,21 @@ export default function ChatPage() {
       onClick: handleCopySelection,
       disabled: !window.getSelection()?.toString() 
     },
+    ...(selectedMessage.author_id === userId ? [
+      { 
+        label: 'Delete', 
+        onClick: () => handleDeleteMessage(selectedMessage),
+        danger: true,
+      },
+    ] : []),
   ] : contextMenu ? [
     { label: 'Copy selected text', onClick: handleCopySelection },
   ] : [];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#1a1a2e]">
+    <div className="h-full flex flex-col bg-[#1a1a2e]">
       {currentChannel && (
-        <div className="p-4 border-b border-[#2a2a4a] flex items-center justify-between">
+        <div className="p-4 border-b border-[#2a2a4a] flex items-center justify-between flex-shrink-0">
           <div>
             <h3 className="font-semibold text-white flex items-center gap-2">
               <span className="text-gray-500">#</span>
@@ -188,7 +326,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 min-h-0">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-gray-500">Loading messages...</div>
@@ -203,38 +341,17 @@ export default function ChatPage() {
           </div>
         ) : (
           <>
-            {pertinentMessages.map((message) => (
+            {sortedMessages.map((message) => (
               <div key={message.id} onContextMenu={(e) => handleContextMenu(e, message)}>
                 <MessageItem message={message} />
               </div>
             ))}
-            
-            {offTopicMessages.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-[#2a2a4a]">
-                <button 
-                  onClick={() => setShowOffTopic(!showOffTopic)}
-                  className="w-full text-left mb-2 px-2 py-1.5 rounded hover:bg-[#2a2a4a] transition-colors flex items-center gap-2"
-                >
-                  <span className={`transform transition-transform ${showOffTopic ? 'rotate-90' : ''}`}>
-                    ▶
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {offTopicMessages.length} less relevant message{offTopicMessages.length > 1 ? 's' : ''}
-                  </span>
-                </button>
-                {showOffTopic && offTopicMessages.map((message) => (
-                  <div key={message.id} onContextMenu={(e) => handleContextMenu(e, message)}>
-                    <MessageItem message={message} isTruncated />
-                  </div>
-                ))}
-              </div>
-            )}
           </>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSend} className="p-4 border-t border-[#2a2a4a]">
+      <form onSubmit={handleSend} className="p-4 border-t border-[#2a2a4a] flex-shrink-0">
         <div className="relative">
           <input
             type="text"
@@ -261,6 +378,16 @@ export default function ChatPage() {
           onClose={() => setContextMenu(null)}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={!!deleteConfirm}
+        title="Delete Message"
+        message="Are you sure you want to delete this message? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        onClose={() => setDeleteConfirm(null)}
+        danger
+      />
     </div>
   );
 }

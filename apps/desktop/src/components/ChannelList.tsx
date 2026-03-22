@@ -4,7 +4,7 @@ import { useAppStore } from '../stores/app';
 import { useAuthStore } from '../stores/auth';
 import { api, type Channel } from '../lib/api';
 import ContextMenu from './ContextMenu';
-import RenameDialog from './RenameDialog';
+import EditChannelDialog from './EditChannelDialog';
 
 export default function ChannelList() {
   const { token } = useAuthStore();
@@ -14,7 +14,7 @@ export default function ChannelList() {
   const [newName, setNewName] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; channel: Channel } | null>(null);
-  const [renameChannel, setRenameChannel] = useState<Channel | null>(null);
+  const [editDialog, setEditDialog] = useState<{ mode: 'rename' | 'topic'; channel: Channel } | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -55,11 +55,12 @@ export default function ChannelList() {
     setContextMenu({ x: e.clientX, y: e.clientY, channel });
   };
 
-  const handleRename = async (newName: string, channel: Channel) => {
+  const handleUpdateChannel = async (channel: Channel, mode: 'rename' | 'topic', newValue: string) => {
     if (!token) return;
     
     try {
-      const updatedChannel = await api.workspaces.updateChannel(token, channel.id, { name: newName });
+      const updateData = mode === 'rename' ? { name: newValue } : { topic: newValue };
+      const updatedChannel = await api.workspaces.updateChannel(token, channel.id, updateData);
       setChannels(prev => prev.map(c => 
         c.id === channel.id ? updatedChannel : c
       ));
@@ -67,7 +68,7 @@ export default function ChannelList() {
         setCurrentChannel(updatedChannel);
       }
     } catch (err) {
-      console.error('Failed to rename channel:', err);
+      console.error('Failed to update channel:', err);
     }
   };
 
@@ -147,23 +148,28 @@ export default function ChannelList() {
           items={[
             { 
               label: 'Rename', 
-              onClick: () => setRenameChannel(contextMenu.channel)
+              onClick: () => setEditDialog({ mode: 'rename', channel: contextMenu.channel })
+            },
+            { 
+              label: 'Edit topic', 
+              onClick: () => setEditDialog({ mode: 'topic', channel: contextMenu.channel })
             },
           ]}
           onClose={() => setContextMenu(null)}
         />
       )}
 
-      <RenameDialog
-        isOpen={!!renameChannel}
-        currentName={renameChannel?.name || ''}
-        onRename={(newName) => {
-          if (renameChannel) {
-            handleRename(newName, renameChannel);
+      <EditChannelDialog
+        isOpen={!!editDialog}
+        mode={editDialog?.mode || 'rename'}
+        currentValue={editDialog?.mode === 'rename' ? editDialog.channel.name : (editDialog?.channel.topic || '')}
+        onSave={(newValue) => {
+          if (editDialog) {
+            handleUpdateChannel(editDialog.channel, editDialog.mode, newValue);
           }
         }}
         onClose={() => {
-          setRenameChannel(null);
+          setEditDialog(null);
           setContextMenu(null);
         }}
       />

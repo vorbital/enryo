@@ -104,5 +104,9 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ content }),
       }, token),
+    deleteMessage: (token: string, channelId: string, messageId: string) =>
+      fetchWithAuth<void>(`/channels/${channelId}/messages/${messageId}`, {
+        method: 'DELETE',
+      }, token),
   },
 };

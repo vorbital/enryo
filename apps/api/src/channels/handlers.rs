@@ -308,3 +308,25 @@ pub async fn get_thread(
 
     Ok(Json(replies))
 }
+
+pub async fn delete_message(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((channel_id, message_id)): Path<(Uuid, Uuid)>,
+) -> Result<Json<()>, AuthError> {
+    let user_id = extract_user_id(&headers, &state.jwt_secret)?;
+
+    let result = sqlx::query("DELETE FROM messages WHERE id = $1 AND author_id = $2 AND channel_id = $3")
+        .bind(message_id)
+        .bind(user_id)
+        .bind(channel_id)
+        .execute(&state.db)
+        .await
+        .map_err(|_| AuthError::Database)?;
+
+    if result.rows_affected() == 0 {
+        return Err(AuthError::InvalidToken);
+    }
+
+    Ok(Json(()))
+}
