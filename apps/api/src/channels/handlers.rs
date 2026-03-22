@@ -85,6 +85,48 @@ pub async fn get(
     Ok(Json(channel))
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UpdateChannel {
+    pub name: Option<String>,
+    pub topic: Option<String>,
+}
+
+pub async fn update(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<UpdateChannel>,
+) -> Result<Json<Channel>, AuthError> {
+    extract_user_id(&headers, &state.jwt_secret)?;
+
+    let channel = sqlx::query_as::<_, Channel>(
+        "SELECT id, workspace_id, name, topic, position FROM channels WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|_| AuthError::Database)?
+    .ok_or(AuthError::InvalidToken)?;
+
+    let name = payload.name.unwrap_or(channel.name);
+    let topic = payload.topic.or(channel.topic);
+
+    let updated: Channel = sqlx::query_as(
+        r#"
+        UPDATE channels SET name = $1, topic = $2 WHERE id = $3
+        RETURNING id, workspace_id, name, topic, position
+        "#,
+    )
+    .bind(&name)
+    .bind(&topic)
+    .bind(id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| AuthError::Database)?;
+
+    Ok(Json(updated))
+}
+
 pub async fn list_messages(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -138,6 +180,7 @@ pub async fn list_messages(
 #[derive(Debug, Deserialize)]
 pub struct CreateMessage {
     pub content: String,
+    pub parent_id: Option<Uuid>,
 }
 
 pub async fn create_message(
@@ -154,8 +197,8 @@ pub async fn create_message(
 
     let message: Message = sqlx::query_as::<_, Message>(
         r#"
-        INSERT INTO messages (channel_id, author_id, content, is_pertinent)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO messages (channel_id, author_id, content, is_pertinent, parent_id)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id, channel_id, author_id, content, is_pertinent, parent_id, created_at
         "#,
     )
@@ -163,6 +206,7 @@ pub async fn create_message(
     .bind(user_id)
     .bind(&payload.content)
     .bind(is_pertinent)
+    .bind(payload.parent_id)
     .fetch_one(&state.db)
     .await
     .map_err(|_| AuthError::Database)?;
@@ -238,4 +282,29 @@ pub async fn relevant_messages(
     };
 
     Ok(Json(messages))
+}
+
+pub async fn get_thread(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(message_id): Path<Uuid>,
+) -> Result<Json<Vec<MessageWithAuthor>>, AuthError> {
+    extract_user_id(&headers, &state.jwt_secret)?;
+
+    let replies = sqlx::query_as::<_, MessageWithAuthor>(
+        r#"
+        SELECT m.id, m.channel_id, m.author_id, m.content, m.is_pertinent,
+               m.parent_id, m.created_at, u.display_name as author_name, u.avatar_url as author_avatar
+        FROM messages m
+        INNER JOIN users u ON m.author_id = u.id
+        WHERE m.parent_id = $1
+        ORDER BY m.created_at ASC
+        "#,
+    )
+    .bind(message_id)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|_| AuthError::Database)?;
+
+    Ok(Json(replies))
 }

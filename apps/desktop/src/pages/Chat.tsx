@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { useAppStore } from '../stores/app';
 import { api } from '../lib/api';
-import MessageItem, { TruncatedMessage } from '../components/MessageItem';
+import MessageItem from '../components/MessageItem';
+import ContextMenu from '../components/ContextMenu';
 import type { MessageWithAuthor } from '../lib/api';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
@@ -16,6 +17,9 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showOffTopic, setShowOffTopic] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<MessageWithAuthor | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -130,6 +134,38 @@ export default function ChatPage() {
   const pertinentMessages = messages.filter((m) => m.is_pertinent);
   const offTopicMessages = messages.filter((m) => !m.is_pertinent);
 
+  const handleContextMenu = (e: React.MouseEvent, message?: MessageWithAuthor) => {
+    e.preventDefault();
+    setSelectedMessage(message || null);
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleCopySelection = () => {
+    const selection = window.getSelection()?.toString();
+    if (selection) {
+      navigator.clipboard.writeText(selection);
+    } else if (selectedMessage) {
+      navigator.clipboard.writeText(selectedMessage.content);
+    }
+    setContextMenu(null);
+  };
+
+  const handleCopyMessage = (message: MessageWithAuthor) => {
+    navigator.clipboard.writeText(message.content);
+    setContextMenu(null);
+  };
+
+  const contextMenuItems = contextMenu && selectedMessage ? [
+    { label: 'Copy message', onClick: () => handleCopyMessage(selectedMessage) },
+    { 
+      label: 'Copy selected text', 
+      onClick: handleCopySelection,
+      disabled: !window.getSelection()?.toString() 
+    },
+  ] : contextMenu ? [
+    { label: 'Copy selected text', onClick: handleCopySelection },
+  ] : [];
+
   return (
     <div className="flex-1 flex flex-col bg-[#1a1a2e]">
       {currentChannel && (
@@ -168,19 +204,28 @@ export default function ChatPage() {
         ) : (
           <>
             {pertinentMessages.map((message) => (
-              <MessageItem key={message.id} message={message} />
+              <div key={message.id} onContextMenu={(e) => handleContextMenu(e, message)}>
+                <MessageItem message={message} />
+              </div>
             ))}
             
             {offTopicMessages.length > 0 && (
               <div className="mt-4 pt-4 border-t border-[#2a2a4a]">
-                <p className="text-[10px] text-gray-600 mb-2 px-2 flex items-center gap-2">
-                  <span>{offTopicMessages.length}</span>
-                  <span>less relevant</span>
-                  <span className="text-gray-700">•</span>
-                  <span>click to expand</span>
-                </p>
-                {offTopicMessages.map((message) => (
-                  <TruncatedMessage key={message.id} message={message} />
+                <button 
+                  onClick={() => setShowOffTopic(!showOffTopic)}
+                  className="w-full text-left mb-2 px-2 py-1.5 rounded hover:bg-[#2a2a4a] transition-colors flex items-center gap-2"
+                >
+                  <span className={`transform transition-transform ${showOffTopic ? 'rotate-90' : ''}`}>
+                    ▶
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    {offTopicMessages.length} less relevant message{offTopicMessages.length > 1 ? 's' : ''}
+                  </span>
+                </button>
+                {showOffTopic && offTopicMessages.map((message) => (
+                  <div key={message.id} onContextMenu={(e) => handleContextMenu(e, message)}>
+                    <MessageItem message={message} isTruncated />
+                  </div>
                 ))}
               </div>
             )}
@@ -207,6 +252,15 @@ export default function ChatPage() {
           )}
         </div>
       </form>
+
+      {contextMenu && contextMenuItems.length > 0 && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }

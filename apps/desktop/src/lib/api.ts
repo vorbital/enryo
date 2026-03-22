@@ -84,6 +84,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ name, topic }),
       }, token),
+    updateChannel: (token: string, channelId: string, data: { name?: string; topic?: string }) =>
+      fetchWithAuth<Channel>(`/channels/${channelId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }, token),
   },
   channels: {
     get: (token: string, id: string) =>

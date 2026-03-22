@@ -47,12 +47,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let llm_url = std::env::var("LLM_URL")
         .unwrap_or_else(|_| "http://localhost:8080".to_string());
 
-    let db = sqlx::postgres::PgPoolOptions::new()
+    let db = match sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)
+        .acquire_timeout(std::time::Duration::from_secs(5))
         .connect(&database_url)
-        .await?;
+        .await
+    {
+        Ok(db) => db,
+        Err(e) => {
+            eprintln!("ERROR: Failed to connect to database: {}", e);
+            std::process::exit(1);
+        }
+    };
 
-    sqlx::migrate!("./migrations").run(&db).await?;
+    if let Err(e) = sqlx::migrate!("./migrations").run(&db).await {
+        eprintln!("ERROR: Failed to run migrations: {}", e);
+        std::process::exit(1);
+    }
 
     let (broadcaster, _) = broadcast::channel::<ws::WsMessage>(100);
 

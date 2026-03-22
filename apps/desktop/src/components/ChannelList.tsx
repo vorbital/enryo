@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/app';
 import { useAuthStore } from '../stores/auth';
 import { api, type Channel } from '../lib/api';
+import ContextMenu from './ContextMenu';
+import RenameDialog from './RenameDialog';
 
 export default function ChannelList() {
   const { token } = useAuthStore();
@@ -10,6 +12,9 @@ export default function ChannelList() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newTopic, setNewTopic] = useState('');
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; channel: Channel } | null>(null);
+  const [renameChannel, setRenameChannel] = useState<Channel | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,12 +28,46 @@ export default function ChannelList() {
     if (!newName.trim() || !currentWorkspace || !token) return;
 
     try {
-      const channel = await api.workspaces.createChannel(token, currentWorkspace.slug, newName);
+      const channel = await api.workspaces.createChannel(
+        token, 
+        currentWorkspace.slug, 
+        newName, 
+        newTopic || undefined
+      );
       setChannels([...channels, channel]);
       setNewName('');
+      setNewTopic('');
       setShowCreate(false);
     } catch (err) {
       console.error('Failed to create channel:', err);
+    }
+  };
+
+  const handleCancel = () => {
+    setShowCreate(false);
+    setNewName('');
+    setNewTopic('');
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, channel: Channel) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, channel });
+  };
+
+  const handleRename = async (newName: string, channel: Channel) => {
+    if (!token) return;
+    
+    try {
+      const updatedChannel = await api.workspaces.updateChannel(token, channel.id, { name: newName });
+      setChannels(prev => prev.map(c => 
+        c.id === channel.id ? updatedChannel : c
+      ));
+      if (channel.id === useAppStore.getState().currentChannel?.id) {
+        setCurrentChannel(updatedChannel);
+      }
+    } catch (err) {
+      console.error('Failed to rename channel:', err);
     }
   };
 
@@ -40,30 +79,55 @@ export default function ChannelList() {
         </h4>
         
         {channels.map((channel) => (
-          <button
+          <div
             key={channel.id}
-            onClick={() => {
-              setCurrentChannel(channel);
-              navigate(`/channel/${channel.id}`);
-            }}
-            className="w-full text-left px-2 py-1 rounded text-gray-300 hover:bg-[#2a2a4a] hover:text-white flex items-center gap-2 transition-colors"
+            onContextMenu={(e) => handleContextMenu(e, channel)}
           >
-            <span className="text-gray-500">#</span>
-            <span className="truncate">{channel.name}</span>
-          </button>
+            <button
+              onClick={() => {
+                setCurrentChannel(channel);
+                navigate(`/channel/${channel.id}`);
+              }}
+              className="w-full text-left px-2 py-1 rounded text-gray-300 hover:bg-[#2a2a4a] hover:text-white flex items-center gap-2 transition-colors"
+            >
+              <span className="text-gray-500">#</span>
+              <span className="truncate">{channel.name}</span>
+            </button>
+          </div>
         ))}
         
         {showCreate ? (
-          <form onSubmit={handleCreate} className="px-2 mt-1">
+          <form onSubmit={handleCreate} className="px-2 mt-1 space-y-2">
             <input
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="channel-name"
-              className="w-full px-2 py-1 text-sm bg-[#2a2a4a] rounded focus:outline-none focus:ring-1 focus:ring-[#00d9ff]"
+              className="w-full px-2 py-1 text-sm bg-[#2a2a4a] rounded focus:outline-none focus:ring-1 focus:ring-[#00d9ff] text-white placeholder-gray-500"
               autoFocus
-              onBlur={() => setShowCreate(false)}
             />
+            <input
+              type="text"
+              value={newTopic}
+              onChange={(e) => setNewTopic(e.target.value)}
+              placeholder="topic (optional)"
+              className="w-full px-2 py-1 text-sm bg-[#2a2a4a] rounded focus:outline-none focus:ring-1 focus:ring-[#00d9ff] text-white placeholder-gray-500"
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="px-2 py-1 text-xs bg-[#00d9ff] text-black rounded font-medium hover:bg-[#00b8d9]"
+              >
+                Create
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="px-2 py-1 text-xs text-gray-400 hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         ) : (
           <button
@@ -75,6 +139,34 @@ export default function ChannelList() {
           </button>
         )}
       </div>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={[
+            { 
+              label: 'Rename', 
+              onClick: () => setRenameChannel(contextMenu.channel)
+            },
+          ]}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      <RenameDialog
+        isOpen={!!renameChannel}
+        currentName={renameChannel?.name || ''}
+        onRename={(newName) => {
+          if (renameChannel) {
+            handleRename(newName, renameChannel);
+          }
+        }}
+        onClose={() => {
+          setRenameChannel(null);
+          setContextMenu(null);
+        }}
+      />
     </div>
   );
 }
