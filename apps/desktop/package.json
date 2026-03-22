@@ -11,22 +11,23 @@
   },
   "dependencies": {
     "@enryo/types": "workspace:*",
+    "@tanstack/react-query": "^5.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@tanstack/react-query": "^5.0.0",
-    "zustand": "^4.4.0",
-    "react-router-dom": "^6.20.0"
+    "react-router-dom": "^6.20.0",
+    "zustand": "^4.4.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0",
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/cli": "^2.0.0",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
     "@vitejs/plugin-react": "^4.2.0",
-    "typescript": "^5.2.2",
-    "vite": "^5.0.0",
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.1"
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0"
   }
 }

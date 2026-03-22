@@ -27,6 +27,33 @@ async function fetchWithAuth<T>(
   return response.json();
 }
 
+export interface Workspace {
+  id: string;
+  name: string;
+  slug: string;
+  owner_id: string;
+}
+
+export interface Channel {
+  id: string;
+  workspace_id: string;
+  name: string;
+  topic: string | null;
+  position: number;
+}
+
+export interface MessageWithAuthor {
+  id: string;
+  channel_id: string;
+  author_id: string;
+  content: string;
+  is_pertinent: boolean;
+  parent_id: string | null;
+  created_at: string;
+  author_name: string;
+  author_avatar: string | null;
+}
+
 export const api = {
   auth: {
     register: (email: string, password: string, displayName: string) =>
@@ -74,30 +101,3 @@ export const api = {
       }, token),
   },
 };
-
-interface Workspace {
-  id: string;
-  name: string;
-  slug: string;
-  owner_id: string;
-}
-
-interface Channel {
-  id: string;
-  workspace_id: string;
-  name: string;
-  topic: string | null;
-  position: number;
-}
-
-interface MessageWithAuthor {
-  id: string;
-  channel_id: string;
-  author_id: string;
-  content: string;
-  is_pertinent: boolean;
-  parent_id: string | null;
-  created_at: string;
-  author_name: string;
-  author_avatar: string | null;
-}

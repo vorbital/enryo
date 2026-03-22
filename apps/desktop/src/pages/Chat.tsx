@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { useAppStore } from '../stores/app';
 import { api } from '../lib/api';
-import MessageItem from '../components/MessageItem';
+import MessageItem, { TruncatedMessage } from '../components/MessageItem';
 import type { MessageWithAuthor } from '../lib/api';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
@@ -14,69 +14,116 @@ export default function ChatPage() {
   const { setCurrentChannel, currentChannel } = useAppStore();
   const [messages, setMessages] = useState<MessageWithAuthor[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
 
   useEffect(() => {
     if (channelId && token) {
-      api.channels.get(token, channelId).then(setCurrentChannel).catch(console.error);
-      api.channels.messages(token, channelId).then((msgs) => {
-        setMessages(msgs.reverse());
-      }).catch(console.error);
+      setIsLoading(true);
+      Promise.all([
+        api.channels.get(token, channelId).then(setCurrentChannel).catch(console.error),
+        api.channels.messages(token, channelId).then((msgs) => {
+          setMessages(msgs.reverse());
+        }).catch(console.error),
+      ]).finally(() => setIsLoading(false));
     }
   }, [channelId, token]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !channelId) return;
 
-    const socket = new WebSocket(`${WS_URL}/ws?token=${token}`);
-    
-    socket.onopen = () => {
-      console.log('WebSocket connected');
+    const connect = () => {
+      const socket = new WebSocket(`${WS_URL}/ws?token=${token}`);
+      wsRef.current = socket;
+
+      socket.onopen = () => {
+        setIsConnected(true);
+        socket.send(JSON.stringify({
+          type: 'subscribe',
+          channelId: channelId,
+        }));
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'message' && msg.channel_id === channelId) {
+            const newMsg: MessageWithAuthor = {
+              id: msg.message_id,
+              channel_id: msg.channel_id,
+              author_id: msg.author_id,
+              content: msg.content,
+              is_pertinent: msg.is_pertinent,
+              parent_id: null,
+              created_at: msg.created_at,
+              author_name: msg.author_name || 'Unknown',
+              author_avatar: null,
+            };
+            setMessages((prev) => [...prev, newMsg]);
+          }
+        } catch (e) {
+          console.error('Failed to parse message:', e);
+        }
+      };
+
+      socket.onclose = () => {
+        setIsConnected(false);
+        reconnectTimeoutRef.current = setTimeout(connect, 3000);
+      };
+
+      socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
     };
 
-    socket.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'message' && msg.channel_id === channelId) {
-        setMessages((prev) => [...prev, {
-          id: msg.message_id,
-          channel_id: msg.channel_id,
-          author_id: msg.author_id,
-          content: msg.content,
-          is_pertinent: msg.is_pertinent,
-          parent_id: null,
-          created_at: msg.created_at,
-          author_name: msg.author_name,
-          author_avatar: null,
-        }]);
-      }
-    };
-
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    setWs(socket);
+    connect();
 
     return () => {
-      socket.close();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
     };
   }, [token, channelId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !channelId || !token) return;
+    if (!newMessage.trim() || !channelId || !token || !wsRef.current) return;
 
     try {
-      const message = await api.channels.createMessage(token, channelId, newMessage);
-      setMessages((prev) => [...prev, message]);
+      if (wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          type: 'send_message',
+          channelId: channelId,
+          content: newMessage,
+        }));
+      } else {
+        const message = await api.channels.createMessage(token, channelId, newMessage);
+        setMessages((prev) => [...prev, message]);
+      }
       setNewMessage('');
     } catch (err) {
       console.error('Failed to send message:', err);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend(e);
     }
   };
 
@@ -84,42 +131,81 @@ export default function ChatPage() {
   const offTopicMessages = messages.filter((m) => !m.is_pertinent);
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col bg-[#1a1a2e]">
       {currentChannel && (
-        <div className="p-4 border-b border-[#2a2a4a]">
-          <h3 className="font-semibold"># {currentChannel.name}</h3>
-          {currentChannel.topic && (
-            <p className="text-sm text-gray-400">{currentChannel.topic}</p>
-          )}
+        <div className="p-4 border-b border-[#2a2a4a] flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <span className="text-gray-500">#</span>
+              {currentChannel.name}
+            </h3>
+            {currentChannel.topic && (
+              <p className="text-sm text-gray-400">{currentChannel.topic}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-xs text-gray-500">
+              {isConnected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-1">
-        {pertinentMessages.map((message) => (
-          <MessageItem key={message.id} message={message} />
-        ))}
-        
-        {offTopicMessages.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-[#2a2a4a]">
-            <p className="text-xs text-gray-500 mb-2">
-              {offTopicMessages.length} less relevant message{offTopicMessages.length > 1 ? 's' : ''}
-            </p>
-            {offTopicMessages.map((message) => (
-              <MessageItem key={message.id} message={message} truncated />
-            ))}
+      <div className="flex-1 overflow-y-auto p-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-gray-500">Loading messages...</div>
           </div>
+        ) : messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="text-4xl mb-4">#</div>
+              <p className="text-gray-500">No messages yet</p>
+              <p className="text-sm text-gray-600">Be the first to send a message!</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {pertinentMessages.map((message) => (
+              <MessageItem key={message.id} message={message} />
+            ))}
+            
+            {offTopicMessages.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-[#2a2a4a]">
+                <p className="text-[10px] text-gray-600 mb-2 px-2 flex items-center gap-2">
+                  <span>{offTopicMessages.length}</span>
+                  <span>less relevant</span>
+                  <span className="text-gray-700">•</span>
+                  <span>click to expand</span>
+                </p>
+                {offTopicMessages.map((message) => (
+                  <TruncatedMessage key={message.id} message={message} />
+                ))}
+              </div>
+            )}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       <form onSubmit={handleSend} className="p-4 border-t border-[#2a2a4a]">
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Send a message..."
-          className="w-full px-4 py-2 bg-[#2a2a4a] rounded focus:outline-none focus:ring-1 focus:ring-[#00d9ff]"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Send a message..."
+            className="w-full px-4 py-3 bg-[#2a2a4a] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00d9ff]/50 text-white placeholder-gray-500"
+            disabled={!isConnected}
+          />
+          {newMessage.trim() && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500">
+              Enter to send
+            </span>
+          )}
+        </div>
       </form>
     </div>
   );

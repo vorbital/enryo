@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/app';
 import { useAuthStore } from '../stores/auth';
-import { api } from '../lib/api';
-import type { Channel } from '@enryo/types';
+import { api, type Channel } from '../lib/api';
 
 export default function ChannelList() {
   const { token } = useAuthStore();

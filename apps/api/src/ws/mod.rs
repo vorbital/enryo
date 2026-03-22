@@ -2,9 +2,12 @@ use axum::{
     extract::{Query, State, WebSocketUpgrade},
     response::Response,
 };
+use std::sync::Arc;
 use crate::AppState;
 
 mod handlers;
+
+pub use handlers::{handle_connection, WsMessage, AuthQuery};
 
 pub async fn handler(
     State(state): State<AppState>,
@@ -12,11 +15,6 @@ pub async fn handler(
     Query(params): Query<AuthQuery>,
 ) -> Response {
     ws.on_upgrade(move |socket| {
-        handlers::handle_connection(socket, state, params.token)
+        handle_connection(socket, Arc::new(state), params.token)
     })
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct AuthQuery {
-    pub token: String,
 }

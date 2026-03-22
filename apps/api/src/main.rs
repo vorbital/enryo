@@ -3,6 +3,7 @@ use axum::{
     Router,
 };
 use std::sync::Arc;
+use tokio::sync::broadcast;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -19,11 +20,14 @@ mod ws;
 pub use db::DbPool;
 
 pub type AppState = Arc<State>;
+pub type Broadcaster = broadcast::Sender<ws::WsMessage>;
 
+#[derive(Clone)]
 pub struct State {
     pub db: DbPool,
     pub jwt_secret: String,
     pub llm_url: String,
+    pub broadcaster: Broadcaster,
 }
 
 #[tokio::main]
@@ -50,10 +54,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     sqlx::migrate!("./migrations").run(&db).await?;
 
+    let (broadcaster, _) = broadcast::channel::<ws::WsMessage>(100);
+
     let state = Arc::new(State {
         db,
         jwt_secret,
         llm_url,
+        broadcaster,
     });
 
     let cors = CorsLayer::new()

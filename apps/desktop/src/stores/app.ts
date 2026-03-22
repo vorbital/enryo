@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Workspace, Channel } from '@enryo/types';
+import type { Workspace, Channel } from '../lib/api';
 
 interface AppState {
   workspaces: Workspace[];
