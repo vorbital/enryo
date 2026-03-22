@@ -1,43 +1,48 @@
 services:
-  db:
+  enryo-db:
     image: postgres:16-alpine
+    container_name: enryo-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: enryo
+      POSTGRES_PASSWORD: enryo_dev_password
       POSTGRES_DB: enryo
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - enryo_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U enryo"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   # Local LLM server for embedding generation
-  # Uses Ollama with sentence-transformers model
-  llm:
+  enryo-llm:
     image: ghcr.io/ggerganov/llama.cpp/server:latest
+    container_name: enryo-llm
     environment:
       MODEL: ./models/embedding-model.gguf
     ports:
-      - "8080:8080"
+      - "8081:8080"
     volumes:
       - ./llm/models:/models
     profiles:
       - llm
+    restart: unless-stopped
 
   # Alternative: Use Ollama for simpler setup
-  ollama:
+  enryo-ollama:
     image: ollama/ollama:latest
+    container_name: enryo-ollama
     ports:
-      - "11434:11434"
+      - "11435:11434"
     volumes:
-      - ollama_data:/root/.ollama
+      - enryo_ollama_data:/root/.ollama
     profiles:
       - ollama
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
-  ollama_data:
+  enryo_postgres_data:
+  enryo_ollama_data:

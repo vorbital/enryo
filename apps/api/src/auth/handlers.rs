@@ -11,6 +11,7 @@ use axum::{
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use uuid::Uuid;
 
 use crate::AppState;
 
@@ -156,7 +157,7 @@ pub async fn login(
     State(state): State<AppState>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, AuthError> {
-    let row: Option<(String, String)> = sqlx::query_as(
+    let row: Option<(Uuid, String)> = sqlx::query_as(
         "SELECT id, password_hash FROM users WHERE email = $1",
     )
     .bind(&payload.email)
@@ -172,9 +173,9 @@ pub async fn login(
         return Err(AuthError::InvalidCredentials);
     }
 
-    let token = create_token(&user_id, &state.jwt_secret)?;
+    let token = create_token(&user_id.to_string(), &state.jwt_secret)?;
 
-    Ok(Json(AuthResponse { token, user_id }))
+    Ok(Json(AuthResponse { token, user_id: user_id.to_string() }))
 }
 
 pub async fn refresh(
