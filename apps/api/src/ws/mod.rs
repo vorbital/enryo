@@ -1,11 +1,10 @@
-pub mod handlers;
-
 use axum::{
     extract::{Query, State, WebSocketUpgrade},
     response::Response,
-    Extension,
 };
 use crate::AppState;
+
+mod handlers;
 
 pub async fn handler(
     State(state): State<AppState>,

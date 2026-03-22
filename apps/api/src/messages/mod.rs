@@ -1,1 +1,1 @@
-# Messages module
+// Messages module - handlers defined in channels module

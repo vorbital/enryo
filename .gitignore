@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+apps/*/target
+Cargo.lock
+pnpm-lock.yaml

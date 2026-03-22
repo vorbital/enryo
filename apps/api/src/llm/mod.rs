@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 pub async fn score_pertinence(content: &str, llm_url: &str) -> Result<bool, Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();

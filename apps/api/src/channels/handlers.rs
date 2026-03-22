@@ -1,12 +1,15 @@
-use crate::{auth::jwt::verify_token, AppState};
+use crate::auth::{verify_token, AuthError};
+use crate::AppState;
 use axum::{
-    extract::{HeaderMap, Path, Query, State},
+    extract::{Path, Query, State},
+    http::HeaderMap,
     Json,
 };
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, sqlx::FromRow)]
+#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
 pub struct Channel {
     pub id: Uuid,
     pub workspace_id: Uuid,
@@ -21,7 +24,7 @@ pub struct CreateChannel {
     pub topic: Option<String>,
 }
 
-#[derive(Debug, Serialize, sqlx::FromRow)]
+#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
 pub struct Message {
     pub id: Uuid,
     pub channel_id: Uuid,
@@ -32,7 +35,7 @@ pub struct Message {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
 pub struct MessageWithAuthor {
     pub id: Uuid,
     pub channel_id: Uuid,
@@ -51,21 +54,33 @@ pub struct Pagination {
     pub limit: Option<i64>,
 }
 
+pub fn extract_user_id(headers: &HeaderMap, secret: &str) -> Result<Uuid, AuthError> {
+    let auth_header = headers
+        .get("Authorization")
+        .ok_or(AuthError::InvalidToken)?;
+    let token = auth_header
+        .to_str()
+        .map_err(|_| AuthError::InvalidToken)?;
+    let token = token.strip_prefix("Bearer ").ok_or(AuthError::InvalidToken)?;
+    let claims = verify_token(token, secret)?;
+    Ok(Uuid::parse_str(&claims.sub).map_err(|_| AuthError::InvalidToken)?)
+}
+
 pub async fn get(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(id): Path<Uuid>,
-) -> Result<Json<Channel>, crate::auth::AuthError> {
+) -> Result<Json<Channel>, AuthError> {
     extract_user_id(&headers, &state.jwt_secret)?;
 
-    let channel = sqlx::query_as!(
-        Channel,
+    let channel = sqlx::query_as::<_, Channel>(
         "SELECT id, workspace_id, name, topic, position FROM channels WHERE id = $1",
-        id
     )
-    .fetch_optional(&*state.db)
-    .await?
-    .ok_or(crate::auth::AuthError::InvalidToken)?;
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|_| AuthError::Database)?
+    .ok_or(AuthError::InvalidToken)?;
 
     Ok(Json(channel))
 }
@@ -75,14 +90,13 @@ pub async fn list_messages(
     headers: HeaderMap,
     Path(channel_id): Path<Uuid>,
     Query(pagination): Query<Pagination>,
-) -> Result<Json<Vec<MessageWithAuthor>>, crate::auth::AuthError> {
+) -> Result<Json<Vec<MessageWithAuthor>>, AuthError> {
     extract_user_id(&headers, &state.jwt_secret)?;
 
     let limit = pagination.limit.unwrap_or(50).min(100);
 
     let messages = if let Some(before) = pagination.before {
-        sqlx::query_as!(
-            MessageWithAuthor,
+        sqlx::query_as::<_, MessageWithAuthor>(
             r#"
             SELECT m.id, m.channel_id, m.author_id, m.content, m.is_pertinent, 
                    m.parent_id, m.created_at, u.display_name as author_name, u.avatar_url as author_avatar
@@ -92,15 +106,15 @@ pub async fn list_messages(
             ORDER BY m.created_at DESC
             LIMIT $3
             "#,
-            channel_id,
-            before,
-            limit
         )
-        .fetch_all(&*state.db)
-        .await?
+        .bind(channel_id)
+        .bind(before)
+        .bind(limit)
+        .fetch_all(&state.db)
+        .await
+        .map_err(|_| AuthError::Database)?
     } else {
-        sqlx::query_as!(
-            MessageWithAuthor,
+        sqlx::query_as::<_, MessageWithAuthor>(
             r#"
             SELECT m.id, m.channel_id, m.author_id, m.content, m.is_pertinent,
                    m.parent_id, m.created_at, u.display_name as author_name, u.avatar_url as author_avatar
@@ -110,14 +124,20 @@ pub async fn list_messages(
             ORDER BY m.created_at DESC
             LIMIT $2
             "#,
-            channel_id,
-            limit
         )
-        .fetch_all(&*state.db)
-        .await?
+        .bind(channel_id)
+        .bind(limit)
+        .fetch_all(&state.db)
+        .await
+        .map_err(|_| AuthError::Database)?
     };
 
     Ok(Json(messages))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateMessage {
+    pub content: String,
 }
 
 pub async fn create_message(
@@ -125,39 +145,46 @@ pub async fn create_message(
     headers: HeaderMap,
     Path(channel_id): Path<Uuid>,
     Json(payload): Json<CreateMessage>,
-) -> Result<Json<MessageWithAuthor>, crate::auth::AuthError> {
+) -> Result<Json<MessageWithAuthor>, AuthError> {
     let user_id = extract_user_id(&headers, &state.jwt_secret)?;
 
     let is_pertinent = crate::llm::score_pertinence(&payload.content, &state.llm_url)
         .await
         .unwrap_or(true);
 
-    let message = sqlx::query_as!(
-        MessageWithAuthor,
+    let message: Message = sqlx::query_as::<_, Message>(
         r#"
         INSERT INTO messages (channel_id, author_id, content, is_pertinent)
         VALUES ($1, $2, $3, $4)
         RETURNING id, channel_id, author_id, content, is_pertinent, parent_id, created_at
         "#,
-        channel_id,
-        user_id,
-        payload.content,
-        is_pertinent
     )
-    .fetch_one(&*state.db)
-    .await?;
+    .bind(channel_id)
+    .bind(user_id)
+    .bind(&payload.content)
+    .bind(is_pertinent)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| AuthError::Database)?;
 
     let user: (String, Option<String>) = sqlx::query_as(
-        "SELECT display_name, avatar_url FROM users WHERE id = $1"
+        "SELECT display_name, avatar_url FROM users WHERE id = $1",
     )
     .bind(user_id)
-    .fetch_one(&*state.db)
-    .await?;
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| AuthError::Database)?;
 
     let response = MessageWithAuthor {
+        id: message.id,
+        channel_id: message.channel_id,
+        author_id: message.author_id,
+        content: message.content,
+        is_pertinent: message.is_pertinent,
+        parent_id: message.parent_id,
+        created_at: message.created_at,
         author_name: user.0,
         author_avatar: user.1,
-        ..message
     };
 
     Ok(Json(response))
@@ -168,14 +195,13 @@ pub async fn relevant_messages(
     headers: HeaderMap,
     Path(channel_id): Path<Uuid>,
     Query(pagination): Query<Pagination>,
-) -> Result<Json<Vec<MessageWithAuthor>>, crate::auth::AuthError> {
+) -> Result<Json<Vec<MessageWithAuthor>>, AuthError> {
     extract_user_id(&headers, &state.jwt_secret)?;
 
     let limit = pagination.limit.unwrap_or(50).min(100);
 
     let messages = if let Some(before) = pagination.before {
-        sqlx::query_as!(
-            MessageWithAuthor,
+        sqlx::query_as::<_, MessageWithAuthor>(
             r#"
             SELECT m.id, m.channel_id, m.author_id, m.content, m.is_pertinent,
                    m.parent_id, m.created_at, u.display_name as author_name, u.avatar_url as author_avatar
@@ -185,15 +211,15 @@ pub async fn relevant_messages(
             ORDER BY m.created_at DESC
             LIMIT $3
             "#,
-            channel_id,
-            before,
-            limit
         )
-        .fetch_all(&*state.db)
-        .await?
+        .bind(channel_id)
+        .bind(before)
+        .bind(limit)
+        .fetch_all(&state.db)
+        .await
+        .map_err(|_| AuthError::Database)?
     } else {
-        sqlx::query_as!(
-            MessageWithAuthor,
+        sqlx::query_as::<_, MessageWithAuthor>(
             r#"
             SELECT m.id, m.channel_id, m.author_id, m.content, m.is_pertinent,
                    m.parent_id, m.created_at, u.display_name as author_name, u.avatar_url as author_avatar
@@ -203,29 +229,13 @@ pub async fn relevant_messages(
             ORDER BY m.created_at DESC
             LIMIT $2
             "#,
-            channel_id,
-            limit
         )
-        .fetch_all(&*state.db)
-        .await?
+        .bind(channel_id)
+        .bind(limit)
+        .fetch_all(&state.db)
+        .await
+        .map_err(|_| AuthError::Database)?
     };
 
     Ok(Json(messages))
-}
-
-fn extract_user_id(headers: &HeaderMap, secret: &str) -> Result<Uuid, crate::auth::AuthError> {
-    let auth_header = headers
-        .get("Authorization")
-        .ok_or(crate::auth::AuthError::InvalidToken)?;
-    let token = auth_header
-        .to_str()
-        .map_err(|_| crate::auth::AuthError::InvalidToken)?;
-    let token = token.strip_prefix("Bearer ").ok_or(crate::auth::AuthError::InvalidToken)?;
-    let claims = verify_token(token, secret)?;
-    Ok(Uuid::parse_str(&claims.sub).map_err(|_| crate::auth::AuthError::InvalidToken)?)
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CreateMessage {
-    pub content: String,
 }

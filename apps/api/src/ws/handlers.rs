@@ -1,11 +1,9 @@
-use axum::WebSocket;
+use axum::extract::ws::{Message, WebSocket};
 use futures_util::{SinkExt, StreamExt};
 use std::sync::Arc;
-use tokio::sync::broadcast;
 use uuid::Uuid;
 
-use crate::auth::jwt::verify_token;
-use crate::AppState;
+use crate::auth::verify_token;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct WsMessage {
@@ -49,19 +47,15 @@ pub async fn handle_connection(
     let (mut sender, mut receiver) = ws.split();
 
     while let Some(msg) = receiver.next().await {
-        if let Ok(msg) = msg {
-            if let Ok(text) = msg.to_str() {
-                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(text) {
-                    let response = process_message(&state, user_id, parsed).await;
-                    if let Some(resp) = response {
-                        let _ = sender.send(axum::extract::ws::Message::Text(
-                            serde_json::to_string(&resp).unwrap_or_default(),
-                        )).await;
-                    }
+        if let Ok(Message::Text(text)) = msg {
+            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
+                let response = process_message(&state, user_id, parsed).await;
+                if let Some(resp) = response {
+                    let _ = sender.send(Message::Text(
+                        serde_json::to_string(&resp).unwrap_or_default(),
+                    )).await;
                 }
             }
-        } else {
-            break;
         }
     }
 }
@@ -89,7 +83,7 @@ async fn process_message(
             .bind(user_id)
             .bind(&content)
             .bind(is_pertinent)
-            .fetch_one(&*state.db)
+            .fetch_one(&state.db)
             .await
             .ok()?;
 
@@ -97,7 +91,7 @@ async fn process_message(
                 "SELECT display_name FROM users WHERE id = $1"
             )
             .bind(user_id)
-            .fetch_one(&*state.db)
+            .fetch_one(&state.db)
             .await
             .ok()?;
 

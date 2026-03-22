@@ -1,10 +1,7 @@
-pub mod handlers;
-
-use axum::{
-    routing::{get, post},
-    Router,
-};
+use axum::{routing::get, Router};
 use crate::AppState;
+
+mod handlers;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -12,5 +9,3 @@ pub fn router() -> Router<AppState> {
         .route("/:slug", get(handlers::get))
         .route("/:slug/channels", get(handlers::list_channels).post(handlers::create_channel))
 }
-
-pub use handlers::*;
