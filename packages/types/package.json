@@ -1,0 +1,13 @@
+{
+  "name": "@enryo/types",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "lint": "echo 'No lint needed for types package'"
+  }
+}

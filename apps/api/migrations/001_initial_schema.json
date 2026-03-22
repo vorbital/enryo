@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "description": "Initial schema",
+  "old": null,
+  "new": {
+    "efmigrationsversion": "1"
+  },
+  "checksum": {
+    "type": "fnv64a",
+    "hash": "0000000000000000"
+  }
+}
