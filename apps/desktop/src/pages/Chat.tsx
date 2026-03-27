@@ -10,14 +10,10 @@ import type { MessageWithAuthor } from '../lib/api';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
 
-console.log('WS_URL:', WS_URL);
-
 export default function ChatPage() {
   const { channelId } = useParams<{ channelId: string }>();
   const { token, userId } = useAuthStore();
   const { setCurrentChannel, currentChannel } = useAppStore();
-
-  console.log('ChatPage render - channelId:', channelId, 'token:', token ? 'present' : 'null');
 
   const [messages, setMessages] = useState<MessageWithAuthor[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -92,14 +88,17 @@ export default function ChatPage() {
 
   // Connection logic
   useEffect(() => {
+    isMountedRef.current = true;
     if (!token || !channelId) {
       setIsConnected(false);
       return;
     }
 
     // Clean up previous connection
-    if (wsRef.current) {
-      wsRef.current.close();
+    const oldWs = wsRef.current;
+    if (oldWs) {
+      wsRef.current = null;
+      oldWs.close();
     }
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -113,19 +112,23 @@ export default function ChatPage() {
         return;
       }
 
+      if (!token) {
+        setIsConnected(false);
+        return;
+      }
+
+      if (!channelId) {
+        setIsConnected(false);
+        return;
+      }
+
       const wsUrl = `${WS_URL}/ws?token=${token}`;
-      console.log('Connecting to WebSocket:', wsUrl);
 
       try {
         const socket = new WebSocket(wsUrl);
         wsRef.current = socket;
 
         socket.onopen = () => {
-          console.log('WebSocket connected');
-          if (!isMountedRef.current || !isChannelActive) {
-            socket.close();
-            return;
-          }
           setIsConnected(true);
           reconnectAttemptsRef.current = 0; // Reset reconnect counter on successful connection
           socket.send(JSON.stringify({
