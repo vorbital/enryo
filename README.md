@@ -63,4 +63,4 @@ enryo/
 
 ## License
 
-MIT
+CC BY-NC 4.0 — Attribution required, non-commercial use only.
