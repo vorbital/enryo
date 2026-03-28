@@ -31,46 +31,46 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#1a1a2e]">
-      <div className="w-full max-w-md p-8 bg-[#16213e] rounded-lg shadow-lg">
-        <h1 className="text-3xl font-bold text-center mb-8 text-[#00d9ff]">Enryo</h1>
+    <div className="flex items-center justify-center min-h-screen bg-[var(--bg-primary)]">
+      <div className="w-full max-w-md p-8 bg-[var(--bg-secondary)] rounded-lg shadow-lg">
+        <h1 className="text-3xl font-bold text-center mb-8 text-[var(--ws-primary-500)]">Enryo</h1>
         
-        <h2 className="text-xl font-semibold mb-6 text-center">
+        <h2 className="text-xl font-semibold mb-6 text-center text-[var(--text-primary)]">
           {isLogin ? 'Welcome back' : 'Create an account'}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div>
-              <label className="block text-sm font-medium mb-1">Display Name</label>
+              <label className="block text-sm font-medium mb-1 text-[var(--text-secondary)]">Display Name</label>
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full px-4 py-2 bg-[#1a1a2e] border border-[#0f3460] rounded focus:border-[#00d9ff] focus:outline-none"
+                className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded focus:border-[var(--ws-primary-500)] focus:outline-none text-[var(--text-primary)]"
                 required={!isLogin}
               />
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
+            <label className="block text-sm font-medium mb-1 text-[var(--text-secondary)]">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 bg-[#1a1a2e] border border-[#0f3460] rounded focus:border-[#00d9ff] focus:outline-none"
+              className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded focus:border-[var(--ws-primary-500)] focus:outline-none text-[var(--text-primary)]"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
+            <label className="block text-sm font-medium mb-1 text-[var(--text-secondary)]">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 bg-[#1a1a2e] border border-[#0f3460] rounded focus:border-[#00d9ff] focus:outline-none"
+              className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded focus:border-[var(--ws-primary-500)] focus:outline-none text-[var(--text-primary)]"
               required
             />
           </div>
@@ -81,18 +81,18 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full py-2 bg-[#00d9ff] text-[#1a1a2e] font-semibold rounded hover:bg-[#00b8d9] transition-colors"
+            className="w-full py-2 bg-[var(--ws-primary-500)] text-[var(--ws-primary-bg)] font-semibold rounded hover:opacity-90 transition-colors"
           >
             {isLogin ? 'Sign In' : 'Sign Up'}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-400">
+        <p className="mt-4 text-center text-sm text-[var(--text-muted)]">
           {isLogin ? "Don't have an account? " : 'Already have an account? '}
           <button
             type="button"
             onClick={() => setIsLogin(!isLogin)}
-            className="text-[#00d9ff] hover:underline"
+            className="text-[var(--ws-primary-500)] hover:underline"
           >
             {isLogin ? 'Sign up' : 'Sign in'}
           </button>

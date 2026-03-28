@@ -12,6 +12,14 @@ export interface Workspace {
   slug: string;
   ownerId: string;
   createdAt: string;
+  settings?: WorkspaceSettings;
+}
+
+export interface WorkspaceSettings {
+  primaryHue?: number;
+  primarySaturation?: number;
+  secondaryHue?: number;
+  secondarySaturation?: number;
 }
 
 export interface WorkspaceMember {

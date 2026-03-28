@@ -308,21 +308,21 @@ export default function ChatPage() {
   ] : [];
 
   return (
-    <div className="h-full flex flex-col bg-[#1a1a2e]">
+    <div className="h-full flex flex-col bg-[var(--bg-primary)]">
       {currentChannel && (
-        <div className="p-4 border-b border-[#2a2a4a] flex items-center justify-between flex-shrink-0">
+        <div className="p-4 border-b border-[var(--border-color)] flex items-center justify-between flex-shrink-0">
           <div>
-            <h3 className="font-semibold text-white flex items-center gap-2">
-              <span className="text-gray-500">#</span>
+            <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
+              <span className="text-[var(--text-muted)]">#</span>
               {currentChannel.name}
             </h3>
             {currentChannel.topic && (
-              <p className="text-sm text-gray-400">{currentChannel.topic}</p>
+              <p className="text-sm text-[var(--text-muted)]">{currentChannel.topic}</p>
             )}
           </div>
           <div className="flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-[var(--text-muted)]">
               {isConnected ? 'Connected' : 'Disconnected'}
             </span>
           </div>
@@ -332,14 +332,14 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto p-4 min-h-0">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-gray-500">Loading messages...</div>
+            <div className="text-[var(--text-muted)]">Loading messages...</div>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <div className="text-4xl mb-4">#</div>
-              <p className="text-gray-500">No messages yet</p>
-              <p className="text-sm text-gray-600">Be the first to send a message!</p>
+              <div className="text-4xl mb-4 text-[var(--ws-primary-400)]">#</div>
+              <p className="text-[var(--text-muted)]">No messages yet</p>
+              <p className="text-sm text-[var(--text-muted)]">Be the first to send a message!</p>
             </div>
           </div>
         ) : (
@@ -354,7 +354,7 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSend} className="p-4 border-t border-[#2a2a4a] flex-shrink-0">
+      <form onSubmit={handleSend} className="p-4 border-t border-[var(--border-color)] flex-shrink-0">
         <div className="relative">
           <input
             type="text"
@@ -362,11 +362,11 @@ export default function ChatPage() {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Send a message..."
-            className="w-full px-4 py-3 bg-[#2a2a4a] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00d9ff]/50 text-white placeholder-gray-500"
+            className="w-full px-4 py-3 bg-[var(--bg-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ws-primary-500)]/50 text-[var(--text-primary)] placeholder-[var(--text-muted)]"
             disabled={!isConnected}
           />
           {newMessage.trim() && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-muted)]">
               Enter to send
             </span>
           )}

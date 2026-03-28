@@ -63,7 +63,7 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-[#1e1e32] border border-[#2a2a4a] rounded-lg shadow-xl py-1 min-w-[160px]"
+      className="fixed z-50 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg shadow-xl py-1 min-w-[160px]"
       style={{ left: x, top: y }}
     >
       {items.map((item, index) => (
@@ -78,10 +78,10 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
           disabled={item.disabled}
           className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
             item.disabled
-              ? 'text-gray-600 cursor-not-allowed'
+              ? 'text-[var(--text-muted)] opacity-50 cursor-not-allowed'
               : item.danger
               ? 'text-red-400 hover:bg-red-500/20'
-              : 'text-gray-200 hover:bg-[#00d9ff]/20 hover:text-white'
+              : 'text-[var(--text-secondary)] hover:bg-[var(--ws-primary-500)]/20 hover:text-[var(--ws-primary-500)]'
           }`}
         >
           {item.label}

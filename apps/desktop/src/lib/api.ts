@@ -54,6 +54,13 @@ export interface MessageWithAuthor {
   author_avatar: string | null;
 }
 
+export interface WorkspaceSettings {
+  primary_hue?: number;
+  primary_saturation?: number;
+  secondary_hue?: number;
+  secondary_saturation?: number;
+}
+
 export const api = {
   auth: {
     register: (email: string, password: string, displayName: string) =>
@@ -88,6 +95,13 @@ export const api = {
       fetchWithAuth<Channel>(`/channels/${channelId}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
+      }, token),
+    getSettings: (token: string, slug: string) =>
+      fetchWithAuth<WorkspaceSettings>(`/workspaces/${slug}/settings`, {}, token),
+    updateSettings: (token: string, slug: string, settings: Partial<WorkspaceSettings>) =>
+      fetchWithAuth<WorkspaceSettings>(`/workspaces/${slug}/settings`, {
+        method: 'PATCH',
+        body: JSON.stringify(settings),
       }, token),
   },
   channels: {

@@ -8,13 +8,94 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --theme-mode: 'dark';
+  
+  --ws-primary-hue: 187;
+  --ws-primary-saturation: 75;
+  --ws-secondary-hue: 262;
+  --ws-secondary-saturation: 68;
+
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #2a2a4a;
+  --bg-tertiary: #111;
+  --border-color: #2a2a4a;
+  --text-primary: #ffffff;
+  --text-secondary: #e4e4e7;
+  --text-muted: #a1a1aa;
+  --hover-bg: #3a3a5a;
+
+  --ws-primary-50: hsl(187, 60%, 97%);
+  --ws-primary-100: hsl(187, 60%, 90%);
+  --ws-primary-200: hsl(187, 60%, 80%);
+  --ws-primary-300: hsl(187, 60%, 70%);
+  --ws-primary-400: hsl(187, 60%, 60%);
+  --ws-primary-500: hsl(187, 60%, 50%);
+  --ws-primary-600: hsl(187, 60%, 40%);
+  --ws-primary-700: hsl(187, 60%, 30%);
+  --ws-primary-800: hsl(187, 60%, 20%);
+  --ws-primary-900: hsl(187, 60%, 12%);
+  --ws-primary-text: #ffffff;
+  --ws-primary-bg: #1a1a2e;
+
+  --ws-secondary-50: hsl(262, 53%, 98%);
+  --ws-secondary-100: hsl(262, 53%, 94%);
+  --ws-secondary-200: hsl(262, 53%, 86%);
+  --ws-secondary-300: hsl(262, 53%, 76%);
+  --ws-secondary-400: hsl(262, 53%, 64%);
+  --ws-secondary-500: hsl(262, 53%, 52%);
+  --ws-secondary-600: hsl(262, 53%, 44%);
+  --ws-secondary-700: hsl(262, 53%, 36%);
+  --ws-secondary-800: hsl(262, 53%, 28%);
+  --ws-secondary-900: hsl(262, 53%, 18%);
+  --ws-secondary-text: #ffffff;
+  --ws-secondary-bg: #1a1a2e;
+}
+
+[data-theme="light"] {
+  --theme-mode: 'light';
+  
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e9ecef;
+  --border-color: #dee2e6;
+  --text-primary: #1a1a2e;
+  --text-secondary: #495057;
+  --text-muted: #6c757d;
+  --hover-bg: #e9ecef;
+
+  --ws-primary-50: hsl(187, 60%, 96%);
+  --ws-primary-100: hsl(187, 60%, 90%);
+  --ws-primary-200: hsl(187, 60%, 80%);
+  --ws-primary-300: hsl(187, 60%, 70%);
+  --ws-primary-400: hsl(187, 60%, 55%);
+  --ws-primary-500: hsl(187, 60%, 45%);
+  --ws-primary-600: hsl(187, 60%, 35%);
+  --ws-primary-700: hsl(187, 60%, 25%);
+  --ws-primary-800: hsl(187, 60%, 18%);
+  --ws-primary-900: hsl(187, 60%, 12%);
+  --ws-primary-text: #1a1a2e;
+  --ws-primary-bg: #f8f9fa;
+
+  --ws-secondary-50: hsl(262, 40%, 96%);
+  --ws-secondary-100: hsl(262, 40%, 90%);
+  --ws-secondary-200: hsl(262, 40%, 80%);
+  --ws-secondary-300: hsl(262, 40%, 70%);
+  --ws-secondary-400: hsl(262, 40%, 55%);
+  --ws-secondary-500: hsl(262, 40%, 45%);
+  --ws-secondary-600: hsl(262, 40%, 35%);
+  --ws-secondary-700: hsl(262, 40%, 25%);
+  --ws-secondary-800: hsl(262, 40%, 18%);
+  --ws-secondary-900: hsl(262, 40%, 12%);
+  --ws-secondary-text: #1a1a2e;
+  --ws-secondary-bg: #f8f9fa;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #1a1a2e;
-  color: #e4e4e7;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 #root {

@@ -45,8 +45,8 @@ export default function EditChannelDialog({ isOpen, mode, currentValue, onSave, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-[#1e1e32] border border-[#2a2a4a] rounded-lg p-4 w-80 shadow-xl">
-        <h3 className="text-white font-semibold mb-3">{title}</h3>
+      <div className="relative bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg p-4 w-80 shadow-xl">
+        <h3 className="text-[var(--text-primary)] font-semibold mb-3">{title}</h3>
         <form onSubmit={handleSubmit}>
           <input
             ref={inputRef}
@@ -54,20 +54,20 @@ export default function EditChannelDialog({ isOpen, mode, currentValue, onSave, 
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
-            className="w-full px-3 py-2 bg-[#2a2a4a] border border-[#3a3a5a] rounded text-white focus:outline-none focus:border-[#00d9ff]"
+            className="w-full px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--ws-primary-500)]"
             autoFocus
           />
           <div className="flex justify-end gap-2 mt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+              className="px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-3 py-1.5 text-sm bg-[#00d9ff] text-black rounded font-medium hover:bg-[#00b8d9] transition-colors"
+              className="px-3 py-1.5 text-sm bg-[var(--ws-primary-500)] text-[var(--ws-primary-bg)] rounded font-medium hover:opacity-90 transition-colors"
             >
               Save
             </button>

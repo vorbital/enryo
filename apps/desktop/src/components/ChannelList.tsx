@@ -38,6 +38,7 @@ export default function ChannelList() {
       setNewName('');
       setNewTopic('');
       setShowCreate(false);
+      navigate(`/workspace/${currentWorkspace.slug}/channel/${channel.id}`);
     } catch (err) {
       console.error('Failed to create channel:', err);
     }
@@ -75,7 +76,7 @@ export default function ChannelList() {
   return (
     <div className="flex flex-col flex-1 overflow-y-auto">
       <div className="px-2 py-4">
-        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 mb-2">
+        <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider px-2 mb-2">
           Channels
         </h4>
         
@@ -86,12 +87,13 @@ export default function ChannelList() {
           >
             <button
               onClick={() => {
+                if (!currentWorkspace) return;
                 setCurrentChannel(channel);
-                navigate(`/channel/${channel.id}`);
+                navigate(`/workspace/${currentWorkspace.slug}/channel/${channel.id}`);
               }}
-              className="w-full text-left px-2 py-1 rounded text-gray-300 hover:bg-[#2a2a4a] hover:text-white flex items-center gap-2 transition-colors"
+              className="w-full text-left px-2 py-1 rounded text-[var(--text-secondary)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] flex items-center gap-2 transition-colors"
             >
-              <span className="text-gray-500">#</span>
+              <span className="text-[var(--text-muted)]">#</span>
               <span className="truncate">{channel.name}</span>
             </button>
           </div>
@@ -104,7 +106,7 @@ export default function ChannelList() {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="channel-name"
-              className="w-full px-2 py-1 text-sm bg-[#2a2a4a] rounded focus:outline-none focus:ring-1 focus:ring-[#00d9ff] text-white placeholder-gray-500"
+              className="w-full px-2 py-1 text-sm bg-[var(--bg-secondary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ws-primary-500)] text-[var(--text-primary)] placeholder-[var(--text-muted)]"
               autoFocus
             />
             <input
@@ -112,19 +114,19 @@ export default function ChannelList() {
               value={newTopic}
               onChange={(e) => setNewTopic(e.target.value)}
               placeholder="topic (optional)"
-              className="w-full px-2 py-1 text-sm bg-[#2a2a4a] rounded focus:outline-none focus:ring-1 focus:ring-[#00d9ff] text-white placeholder-gray-500"
+              className="w-full px-2 py-1 text-sm bg-[var(--bg-secondary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ws-primary-500)] text-[var(--text-primary)] placeholder-[var(--text-muted)]"
             />
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="px-2 py-1 text-xs bg-[#00d9ff] text-black rounded font-medium hover:bg-[#00b8d9]"
+                className="px-2 py-1 text-xs bg-[var(--ws-primary-500)] text-[var(--ws-primary-bg)] rounded font-medium hover:opacity-90"
               >
                 Create
               </button>
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-2 py-1 text-xs text-gray-400 hover:text-white"
+                className="px-2 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               >
                 Cancel
               </button>
@@ -133,9 +135,9 @@ export default function ChannelList() {
         ) : (
           <button
             onClick={() => setShowCreate(true)}
-            className="w-full text-left px-2 py-1 rounded text-gray-400 hover:bg-[#2a2a4a] hover:text-white flex items-center gap-2 transition-colors"
+            className="w-full text-left px-2 py-1 rounded text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] flex items-center gap-2 transition-colors"
           >
-            <span className="text-gray-500">+</span>
+            <span className="text-[var(--text-muted)]">+</span>
             <span className="text-sm">Add Channel</span>
           </button>
         )}

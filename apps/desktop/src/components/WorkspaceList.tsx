@@ -22,7 +22,7 @@ export default function WorkspaceList() {
       setCurrentWorkspace(workspace);
       setNewName('');
       setShowCreate(false);
-      navigate('/');
+      navigate(`/workspace/${workspace.slug}/channel/general`);
     } catch (err) {
       console.error('Failed to create workspace:', err);
     }
@@ -33,11 +33,14 @@ export default function WorkspaceList() {
       {workspaces.map((ws) => (
         <button
           key={ws.id}
-          onClick={() => setCurrentWorkspace(ws)}
+          onClick={() => {
+            setCurrentWorkspace(ws);
+            navigate(`/workspace/${ws.slug}/channel/general`);
+          }}
           className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-colors ${
             currentWorkspace?.id === ws.id
-              ? 'bg-[#00d9ff] text-[#1a1a2e]'
-              : 'bg-[#2a2a4a] text-gray-300 hover:bg-[#3a3a5a]'
+              ? 'bg-[var(--ws-primary-500)] text-[var(--ws-primary-bg)]'
+              : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--hover-bg)]'
           }`}
           title={ws.name}
         >
@@ -52,7 +55,7 @@ export default function WorkspaceList() {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Name"
-            className="w-full px-2 py-1 text-sm bg-[#2a2a4a] rounded mb-1 focus:outline-none focus:ring-1 focus:ring-[#00d9ff]"
+            className="w-full px-2 py-1 text-sm bg-[var(--bg-secondary)] rounded mb-1 focus:outline-none focus:ring-1 focus:ring-[var(--ws-primary-500)] text-[var(--text-primary)]"
             autoFocus
             onBlur={() => setShowCreate(false)}
           />
@@ -60,7 +63,7 @@ export default function WorkspaceList() {
       ) : (
         <button
           onClick={() => setShowCreate(true)}
-          className="w-10 h-10 rounded-full bg-[#2a2a4a] text-gray-400 hover:bg-[#3a3a5a] hover:text-white flex items-center justify-center transition-colors"
+          className="w-10 h-10 rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors"
           title="Add Workspace"
         >
           +
