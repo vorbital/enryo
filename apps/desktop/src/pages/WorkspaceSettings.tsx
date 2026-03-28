@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { useThemeStore } from '../stores/theme';
 import { api } from '../lib/api';
-import { generateColorPalette } from '../lib/colors';
+import { generateColorPalette, applyColorPaletteToCssVars } from '../lib/colors';
 
 export default function WorkspaceSettingsPage() {
   const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
@@ -32,6 +32,20 @@ export default function WorkspaceSettingsPage() {
       .finally(() => setIsLoading(false));
   }, [workspaceSlug, token]);
 
+  const applyColors = () => {
+    const primaryPalette = generateColorPalette(primaryHue, primarySaturation, mode);
+    const secondaryPalette = generateColorPalette(secondaryHue, secondarySaturation, mode);
+    const primaryVars = applyColorPaletteToCssVars(primaryPalette, 'ws-primary');
+    const secondaryVars = applyColorPaletteToCssVars(secondaryPalette, 'ws-secondary');
+    const root = document.documentElement;
+    root.style.setProperty('--ws-primary-hue', String(primaryHue));
+    root.style.setProperty('--ws-primary-saturation', String(primarySaturation));
+    root.style.setProperty('--ws-secondary-hue', String(secondaryHue));
+    root.style.setProperty('--ws-secondary-saturation', String(secondarySaturation));
+    Object.entries(primaryVars).forEach(([key, value]) => root.style.setProperty(key, value));
+    Object.entries(secondaryVars).forEach(([key, value]) => root.style.setProperty(key, value));
+  };
+
   const handleSave = async () => {
     if (!workspaceSlug || !token) return;
     setIsSaving(true);
@@ -42,6 +56,7 @@ export default function WorkspaceSettingsPage() {
         secondary_hue: secondaryHue,
         secondary_saturation: secondarySaturation,
       });
+      applyColors();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -120,7 +135,7 @@ export default function WorkspaceSettingsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
-                  Secondary Color
+                  Background Color
                 </label>
                 <div className="flex items-center gap-4 mb-2">
                   <div
@@ -180,7 +195,7 @@ export default function WorkspaceSettingsPage() {
                 </div>
               </div>
               <div>
-                <p className="text-xs text-[var(--text-muted)] mb-2">Secondary</p>
+                <p className="text-xs text-[var(--text-muted)] mb-2">Background</p>
                 <div className="space-y-2">
                   {[50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((shade) => (
                     <div
@@ -222,7 +237,7 @@ export default function WorkspaceSettingsPage() {
                 </div>
               </div>
               <div>
-                <p className="text-xs text-[var(--text-muted)] mb-2">Secondary</p>
+                <p className="text-xs text-[var(--text-muted)] mb-2">Background</p>
                 <div className="space-y-2">
                   {[50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((shade) => (
                     <div
