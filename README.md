@@ -63,4 +63,4 @@ enryo/
 
 ## License
 
-CC BY-NC 4.0 — Attribution required, non-commercial use only.
+Licensed under [PolyForm Noncommercial License 1.0.0](LICENSE). See the [LICENSE](LICENSE) file for details. Commercial use is not permitted.
