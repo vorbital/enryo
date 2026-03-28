@@ -29,9 +29,9 @@ export default function ChannelList() {
 
     try {
       const channel = await api.workspaces.createChannel(
-        token, 
-        currentWorkspace.slug, 
-        newName, 
+        token,
+        currentWorkspace.slug,
+        newName,
         newTopic || undefined
       );
       setChannels([...channels, channel]);
@@ -58,11 +58,11 @@ export default function ChannelList() {
 
   const handleUpdateChannel = async (channel: Channel, mode: 'rename' | 'topic', newValue: string) => {
     if (!token) return;
-    
+
     try {
       const updateData = mode === 'rename' ? { name: newValue } : { topic: newValue };
       const updatedChannel = await api.workspaces.updateChannel(token, channel.id, updateData);
-      setChannels(prev => prev.map(c => 
+      setChannels(prev => prev.map(c =>
         c.id === channel.id ? updatedChannel : c
       ));
       if (channel.id === useAppStore.getState().currentChannel?.id) {
@@ -79,7 +79,7 @@ export default function ChannelList() {
         <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider px-2 mb-2">
           Channels
         </h4>
-        
+
         {channels.map((channel) => (
           <div
             key={channel.id}
@@ -98,7 +98,7 @@ export default function ChannelList() {
             </button>
           </div>
         ))}
-        
+
         {showCreate ? (
           <form onSubmit={handleCreate} className="px-2 mt-1 space-y-2">
             <input
@@ -148,12 +148,12 @@ export default function ChannelList() {
           x={contextMenu.x}
           y={contextMenu.y}
           items={[
-            { 
-              label: 'Rename', 
+            {
+              label: 'Rename',
               onClick: () => setEditDialog({ mode: 'rename', channel: contextMenu.channel })
             },
-            { 
-              label: 'Edit topic', 
+            {
+              label: 'Edit topic',
               onClick: () => setEditDialog({ mode: 'topic', channel: contextMenu.channel })
             },
           ]}

@@ -76,13 +76,12 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
             }
           }}
           disabled={item.disabled}
-          className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
-            item.disabled
+          className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${item.disabled
               ? 'text-[var(--text-muted)] opacity-50 cursor-not-allowed'
               : item.danger
-              ? 'text-red-400 hover:bg-red-500/20'
-              : 'text-[var(--text-secondary)] hover:bg-[var(--ws-primary-500)]/20 hover:text-[var(--ws-primary-500)]'
-          }`}
+                ? 'text-red-400 hover:bg-red-500/20'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--ws-primary-500)]/20 hover:text-[var(--ws-primary-500)]'
+            }`}
         >
           {item.label}
         </button>

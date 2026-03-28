@@ -7,10 +7,9 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::FromRow;
 use uuid::Uuid;
-use serde_json::Value;
-use tracing;
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct Workspace {
@@ -40,12 +39,12 @@ pub fn extract_user_id(headers: &HeaderMap, secret: &str) -> Result<Uuid, AuthEr
     let auth_header = headers
         .get("Authorization")
         .ok_or(AuthError::InvalidToken)?;
-    let token = auth_header
-        .to_str()
-        .map_err(|_| AuthError::InvalidToken)?;
-    let token = token.strip_prefix("Bearer ").ok_or(AuthError::InvalidToken)?;
+    let token = auth_header.to_str().map_err(|_| AuthError::InvalidToken)?;
+    let token = token
+        .strip_prefix("Bearer ")
+        .ok_or(AuthError::InvalidToken)?;
     let claims = verify_token(token, secret)?;
-    Ok(Uuid::parse_str(&claims.sub).map_err(|_| AuthError::InvalidToken)?)
+    Uuid::parse_str(&claims.sub).map_err(|_| AuthError::InvalidToken)
 }
 
 pub async fn list(
@@ -226,7 +225,7 @@ pub async fn get_settings(
     Path(slug): Path<String>,
 ) -> Result<Json<WorkspaceSettings>, AuthError> {
     tracing::debug!("Getting settings for workspace: {}", slug);
-    
+
     let user_id = extract_user_id(&headers, &state.jwt_secret)?;
     tracing::debug!("User ID: {}", user_id);
 
@@ -268,10 +267,22 @@ pub async fn get_settings(
 
     tracing::debug!("Settings raw: {:?}", settings);
 
-    let primary_hue = settings.get("primaryHue").and_then(|v| v.as_i64()).map(|v| v as i32);
-    let primary_saturation = settings.get("primarySaturation").and_then(|v| v.as_i64()).map(|v| v as i32);
-    let secondary_hue = settings.get("secondaryHue").and_then(|v| v.as_i64()).map(|v| v as i32);
-    let secondary_saturation = settings.get("secondarySaturation").and_then(|v| v.as_i64()).map(|v| v as i32);
+    let primary_hue = settings
+        .get("primaryHue")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
+    let primary_saturation = settings
+        .get("primarySaturation")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
+    let secondary_hue = settings
+        .get("secondaryHue")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
+    let secondary_saturation = settings
+        .get("secondarySaturation")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
 
     Ok(Json(WorkspaceSettings {
         primary_hue,
@@ -288,7 +299,7 @@ pub async fn update_settings(
     Json(payload): Json<UpdateSettings>,
 ) -> Result<Json<WorkspaceSettings>, AuthError> {
     tracing::debug!("Updating settings for workspace: {}", slug);
-    
+
     let user_id = extract_user_id(&headers, &state.jwt_secret)?;
 
     let (workspace_id, role): (Uuid, String) = sqlx::query_as(
@@ -354,10 +365,22 @@ pub async fn update_settings(
             AuthError::Database
         })?;
 
-    let primary_hue = new_settings.get("primaryHue").and_then(|v| v.as_i64()).map(|v| v as i32);
-    let primary_saturation = new_settings.get("primarySaturation").and_then(|v| v.as_i64()).map(|v| v as i32);
-    let secondary_hue = new_settings.get("secondaryHue").and_then(|v| v.as_i64()).map(|v| v as i32);
-    let secondary_saturation = new_settings.get("secondarySaturation").and_then(|v| v.as_i64()).map(|v| v as i32);
+    let primary_hue = new_settings
+        .get("primaryHue")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
+    let primary_saturation = new_settings
+        .get("primarySaturation")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
+    let secondary_hue = new_settings
+        .get("secondaryHue")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
+    let secondary_saturation = new_settings
+        .get("secondarySaturation")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
 
     Ok(Json(WorkspaceSettings {
         primary_hue,

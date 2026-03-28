@@ -58,12 +58,12 @@ pub fn extract_user_id(headers: &HeaderMap, secret: &str) -> Result<Uuid, AuthEr
     let auth_header = headers
         .get("Authorization")
         .ok_or(AuthError::InvalidToken)?;
-    let token = auth_header
-        .to_str()
-        .map_err(|_| AuthError::InvalidToken)?;
-    let token = token.strip_prefix("Bearer ").ok_or(AuthError::InvalidToken)?;
+    let token = auth_header.to_str().map_err(|_| AuthError::InvalidToken)?;
+    let token = token
+        .strip_prefix("Bearer ")
+        .ok_or(AuthError::InvalidToken)?;
     let claims = verify_token(token, secret)?;
-    Ok(Uuid::parse_str(&claims.sub).map_err(|_| AuthError::InvalidToken)?)
+    Uuid::parse_str(&claims.sub).map_err(|_| AuthError::InvalidToken)
 }
 
 pub async fn get(
@@ -211,13 +211,12 @@ pub async fn create_message(
     .await
     .map_err(|_| AuthError::Database)?;
 
-    let user: (String, Option<String>) = sqlx::query_as(
-        "SELECT display_name, avatar_url FROM users WHERE id = $1",
-    )
-    .bind(user_id)
-    .fetch_one(&state.db)
-    .await
-    .map_err(|_| AuthError::Database)?;
+    let user: (String, Option<String>) =
+        sqlx::query_as("SELECT display_name, avatar_url FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(&state.db)
+            .await
+            .map_err(|_| AuthError::Database)?;
 
     let response = MessageWithAuthor {
         id: message.id,
@@ -316,13 +315,14 @@ pub async fn delete_message(
 ) -> Result<Json<()>, AuthError> {
     let user_id = extract_user_id(&headers, &state.jwt_secret)?;
 
-    let result = sqlx::query("DELETE FROM messages WHERE id = $1 AND author_id = $2 AND channel_id = $3")
-        .bind(message_id)
-        .bind(user_id)
-        .bind(channel_id)
-        .execute(&state.db)
-        .await
-        .map_err(|_| AuthError::Database)?;
+    let result =
+        sqlx::query("DELETE FROM messages WHERE id = $1 AND author_id = $2 AND channel_id = $3")
+            .bind(message_id)
+            .bind(user_id)
+            .bind(channel_id)
+            .execute(&state.db)
+            .await
+            .map_err(|_| AuthError::Database)?;
 
     if result.rows_affected() == 0 {
         return Err(AuthError::InvalidToken);

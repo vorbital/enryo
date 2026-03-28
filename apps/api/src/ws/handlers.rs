@@ -1,8 +1,7 @@
-use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::extract::ws::{Message, WebSocket};
 use futures_util::{SinkExt, StreamExt};
 use std::sync::Arc;
 use uuid::Uuid;
-use sqlx::FromRow;
 
 use crate::auth::verify_token;
 use crate::AppState;
@@ -14,7 +13,7 @@ struct StoredMessage {
     author_id: Uuid,
     content: String,
     is_pertinent: bool,
-    parent_id: Option<Uuid>,
+    _parent_id: Option<Uuid>,
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -47,11 +46,7 @@ pub struct AuthQuery {
     pub token: String,
 }
 
-pub async fn handle_connection(
-    ws: WebSocket,
-    state: Arc<AppState>,
-    token: String,
-) {
+pub async fn handle_connection(ws: WebSocket, state: Arc<AppState>, token: String) {
     let claims = match verify_token(&token, &state.jwt_secret) {
         Ok(c) => c,
         Err(_) => return,
@@ -76,7 +71,7 @@ pub async fn handle_connection(
                     Some(Ok(Message::Text(text))) => {
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
                             let msg_type = parsed.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                            
+
                             if msg_type == "subscribe" {
                                 if let Some(channel_id_str) = parsed.get("channelId").and_then(|v| v.as_str()) {
                                     if let Ok(channel_id) = Uuid::parse_str(channel_id_str) {
@@ -88,7 +83,7 @@ pub async fn handle_connection(
                                 }
                                 continue;
                             }
-                            
+
                             if let Some(response) = process_client_message(&state, user_id, &parsed).await {
                                 let _ = state.broadcaster.send(response.clone());
                             }
@@ -101,18 +96,15 @@ pub async fn handle_connection(
                 }
             }
             broadcast_msg = broadcaster_rx.recv() => {
-                match broadcast_msg {
-                    Ok(msg) => {
-                        if let Some(channel_id) = msg.channel_id {
-                            if subscribed_channels.contains(&channel_id) {
-                                let json = serde_json::to_string(&msg).unwrap_or_default();
-                                if sender.send(Message::Text(json)).await.is_err() {
-                                    break;
-                                }
+                if let Ok(msg) = broadcast_msg {
+                    if let Some(channel_id) = msg.channel_id {
+                        if subscribed_channels.contains(&channel_id) {
+                            let json = serde_json::to_string(&msg).unwrap_or_default();
+                            if sender.send(Message::Text(json)).await.is_err() {
+                                break;
                             }
                         }
                     }
-                    Err(_) => {}
                 }
             }
         }
@@ -153,14 +145,13 @@ async fn process_client_message(
             .await;
 
             if let Ok(msg) = stored_msg {
-                let author_name: Option<String> = sqlx::query_scalar(
-                    "SELECT display_name FROM users WHERE id = $1"
-                )
-                .bind(user_id)
-                .fetch_optional(&state.db)
-                .await
-                .ok()
-                .flatten();
+                let author_name: Option<String> =
+                    sqlx::query_scalar("SELECT display_name FROM users WHERE id = $1")
+                        .bind(user_id)
+                        .fetch_optional(&state.db)
+                        .await
+                        .ok()
+                        .flatten();
 
                 Some(WsMessage {
                     msg_type: "message".to_string(),

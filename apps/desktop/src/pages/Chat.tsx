@@ -224,19 +224,11 @@ export default function ChatPage() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !channelId || !token || !wsRef.current) return;
+    if (!newMessage.trim() || !channelId || !token) return;
 
     try {
-      if (wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-          type: 'send_message',
-          channelId: channelId,
-          content: newMessage,
-        }));
-      } else {
-        const message = await api.channels.createMessage(token, channelId, newMessage);
-        setMessages((prev) => [...prev, message]);
-      }
+      const message = await api.channels.createMessage(token, channelId, newMessage);
+      setMessages((prev) => [...prev, message]);
       setNewMessage('');
     } catch (err) {
       console.error('Failed to send message:', err);

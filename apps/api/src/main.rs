@@ -3,8 +3,8 @@ use axum::{
     Router,
 };
 use std::sync::Arc;
-use tokio::sync::broadcast;
 use tokio::net::TcpListener;
+use tokio::sync::broadcast;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -40,12 +40,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .expect("JWT_SECRET must be set");
-    let llm_url = std::env::var("LLM_URL")
-        .unwrap_or_else(|_| "http://localhost:8080".to_string());
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    let llm_url = std::env::var("LLM_URL").unwrap_or_else(|_| "http://localhost:8080".to_string());
 
     let db = match sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)

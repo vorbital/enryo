@@ -28,8 +28,8 @@ export default function WorkspaceThemeProvider({ children }: { children: React.R
   useEffect(() => {
     if (!workspaceSlug || !token) return;
 
-    const workspace = currentWorkspace?.slug === workspaceSlug 
-      ? currentWorkspace 
+    const workspace = currentWorkspace?.slug === workspaceSlug
+      ? currentWorkspace
       : useAppStore.getState().workspaces.find(w => w.slug === workspaceSlug);
 
     if (!workspace) {

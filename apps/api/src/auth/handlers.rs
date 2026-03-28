@@ -43,7 +43,11 @@ impl IntoResponse for AuthError {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
         };
-        (status, Json(serde_json::json!({ "error": self.to_string() }))).into_response()
+        (
+            status,
+            Json(serde_json::json!({ "error": self.to_string() })),
+        )
+            .into_response()
     }
 }
 
@@ -57,7 +61,8 @@ pub struct Claims {
 pub fn hash_password(password: &str) -> Result<String, AuthError> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
-    argon2.hash_password(password.as_bytes(), &salt)
+    argon2
+        .hash_password(password.as_bytes(), &salt)
         .map(|h| h.to_string())
         .map_err(|_| AuthError::Hash)
 }
@@ -125,8 +130,7 @@ pub async fn register(
     State(state): State<AppState>,
     Json(payload): Json<RegisterRequest>,
 ) -> Result<Json<AuthResponse>, AuthError> {
-    let password_hash = hash_password(&payload.password)
-        .map_err(|_| AuthError::Hash)?;
+    let password_hash = hash_password(&payload.password).map_err(|_| AuthError::Hash)?;
 
     let result = sqlx::query_scalar::<_, String>(
         r#"
@@ -147,35 +151,32 @@ pub async fn register(
 
     let token = create_token(&user_id, &state.jwt_secret)?;
 
-    Ok(Json(AuthResponse {
-        token,
-        user_id,
-    }))
+    Ok(Json(AuthResponse { token, user_id }))
 }
 
 pub async fn login(
     State(state): State<AppState>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, AuthError> {
-    let row: Option<(Uuid, String)> = sqlx::query_as(
-        "SELECT id, password_hash FROM users WHERE email = $1",
-    )
-    .bind(&payload.email)
-    .fetch_optional(&state.db)
-    .await
-    .map_err(|_| AuthError::Database)?;
+    let row: Option<(Uuid, String)> =
+        sqlx::query_as("SELECT id, password_hash FROM users WHERE email = $1")
+            .bind(&payload.email)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|_| AuthError::Database)?;
 
     let (user_id, password_hash) = row.ok_or(AuthError::InvalidCredentials)?;
 
-    if !verify_password(&payload.password, &password_hash)
-        .map_err(|_| AuthError::Hash)?
-    {
+    if !verify_password(&payload.password, &password_hash).map_err(|_| AuthError::Hash)? {
         return Err(AuthError::InvalidCredentials);
     }
 
     let token = create_token(&user_id.to_string(), &state.jwt_secret)?;
 
-    Ok(Json(AuthResponse { token, user_id: user_id.to_string() }))
+    Ok(Json(AuthResponse {
+        token,
+        user_id: user_id.to_string(),
+    }))
 }
 
 pub async fn refresh(

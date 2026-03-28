@@ -55,14 +55,14 @@
 [data-theme="light"] {
   --theme-mode: 'light';
   
-  --bg-primary: var(--ws-secondary-50);
-  --bg-secondary: var(--ws-secondary-100);
-  --bg-tertiary: var(--ws-secondary-200);
-  --border-color: var(--ws-secondary-200);
+  --bg-primary: var(--ws-secondary-200);
+  --bg-secondary: var(--ws-secondary-300);
+  --bg-tertiary: var(--ws-secondary-400);
+  --border-color: var(--ws-secondary-300);
   --text-primary: var(--ws-secondary-900);
   --text-secondary: var(--ws-secondary-700);
   --text-muted: var(--ws-secondary-500);
-  --hover-bg: var(--ws-secondary-200);
+  --hover-bg: var(--ws-secondary-300);
 
   --ws-primary-50: hsl(187, 60%, 96%);
   --ws-primary-100: hsl(187, 60%, 90%);

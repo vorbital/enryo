@@ -37,17 +37,16 @@ export default function WorkspaceList() {
             setCurrentWorkspace(ws);
             navigate(`/workspace/${ws.slug}/channel/general`);
           }}
-          className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-colors ${
-            currentWorkspace?.id === ws.id
+          className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-colors ${currentWorkspace?.id === ws.id
               ? 'bg-[var(--ws-primary-500)] text-[var(--ws-primary-bg)]'
               : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--hover-bg)]'
-          }`}
+            }`}
           title={ws.name}
         >
           {ws.name.charAt(0).toUpperCase()}
         </button>
       ))}
-      
+
       {showCreate ? (
         <form onSubmit={handleCreate} className="w-full px-2">
           <input

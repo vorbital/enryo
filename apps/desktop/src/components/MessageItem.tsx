@@ -55,7 +55,7 @@ export default function MessageItem({ message, isTruncated = false }: MessageIte
           </span>
         )}
       </div>
-      
+
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 mb-0.5">
           <span className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--ws-primary-500)] transition-colors">

@@ -8,12 +8,12 @@ interface ConfirmDialogProps {
   danger?: boolean;
 }
 
-export default function ConfirmDialog({ 
-  isOpen, 
-  title, 
-  message, 
+export default function ConfirmDialog({
+  isOpen,
+  title,
+  message,
   confirmLabel = 'Confirm',
-  onConfirm, 
+  onConfirm,
   onClose,
   danger = false,
 }: ConfirmDialogProps) {
@@ -37,11 +37,10 @@ export default function ConfirmDialog({
               onConfirm();
               onClose();
             }}
-            className={`px-3 py-1.5 text-sm rounded font-medium transition-colors ${
-              danger 
-                ? 'bg-red-500 text-white hover:bg-red-600' 
+            className={`px-3 py-1.5 text-sm rounded font-medium transition-colors ${danger
+                ? 'bg-red-500 text-white hover:bg-red-600'
                 : 'bg-[var(--ws-primary-500)] text-[var(--ws-primary-bg)] hover:opacity-90'
-            }`}
+              }`}
           >
             {confirmLabel}
           </button>
